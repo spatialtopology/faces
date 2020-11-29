@@ -1,4 +1,4 @@
-function [trajectory, RT, buttonPressOnset] = circular_rating_output(duration, p, image_scale, rating_type)
+function [trajectory, RT, buttonPressOnset] = circular_rating_output(duration, p, image_tex, rating_type)
 % global screenNumber window windowRect xCenter yCenter screenXpixels screenYpixels
 % shows a circular rating scale and records mouse position
 %
@@ -51,28 +51,35 @@ dspl.ycenter = dspl.screenHeight/2;
 
 dspl.cscale.width = 964; % image scale width
 dspl.cscale.height = 480; % image scale height
-dspl.cscale.xcenter = 483; % scale center (does not equal to screen center)
-dspl.cscale.ycenter = 407;
+% dspl.cscale.xcenter = 483; % scale center (does not equal to screen center)
+% dspl.cscale.ycenter = 407;
+dspl.cscale.xcenter = dspl.screenWidth/2; % scale center (does not equal to screen center)
+dspl.cscale.ycenter = dspl.screenHeight/2;
 dspl.cscale.w = Screen('OpenOffscreenWindow',p.ptb.screenNumber);
 
 Screen('FillRect',dspl.cscale.w,0);
-dspl.cscale.texture = Screen('MakeTexture',p.ptb.window, imread(image_scale));
+% dspl.cscale.texture = Screen('MakeTexture',p.ptb.window, imread(image_scale));
 % placement
 dspl.cscale.rect = [...
     [dspl.xcenter dspl.ycenter]-[0.5*dspl.cscale.width 0.5*dspl.cscale.height] ...
     [dspl.xcenter dspl.ycenter]+[0.5*dspl.cscale.width 0.5*dspl.cscale.height]];
-Screen('DrawTexture',dspl.cscale.w,dspl.cscale.texture,[],dspl.cscale.rect);
-Screen('TextSize',dspl.cscale.w,40);
+%Screen('DrawTexture',dspl.cscale.w,dspl.cscale.texture,[],dspl.cscale.rect);
+Screen('DrawTexture',dspl.cscale.w,image_tex,[],dspl.cscale.rect);
+% Screen('TextSize',dspl.cscale.w,40);
 
 % determine cursor parameters for all scales
-cursor.xmin = dspl.cscale.rect(1);
-cursor.xmax = dspl.cscale.rect(3);
-cursor.ymin = dspl.cscale.rect(2);
-cursor.ymax = dspl.cscale.rect(4);
+cursor.xmin = dspl.screenWidth/2 - dspl.screenWidth/2*0.24;
+cursor.xmax = dspl.screenWidth/2 + dspl.screenWidth/2*0.275;
+% cursor.ymin = dspl.cscale.rect(2);
+% cursor.ymax = dspl.cscale.rect(4);
+
 
 cursor.size = 8;
 cursor.xcenter = ceil(dspl.cscale.rect(1) + (dspl.cscale.rect(3) - dspl.cscale.rect(1))*0.5);
-cursor.ycenter = ceil(dspl.cscale.rect(2) + (dspl.cscale.rect(4)-dspl.cscale.rect(2))*0.847);
+%cursor.ycenter = ceil(dspl.cscale.rect(2) + (dspl.cscale.rect(4)-dspl.cscale.rect(2))*0.847);
+cursor.ycenter = ceil(dspl.cscale.rect(2) + (dspl.cscale.rect(4)-dspl.cscale.rect(2))*0.5);
+cursor.ymin = cursor.ycenter;
+cursor.ymax = cursor.ycenter;
 
 RATINGTITLES = {'INTENSITY'};
 
@@ -113,8 +120,9 @@ while GetSecs < timing.initialized + duration
     % calculate displacement
     cursor.x = (cursor.x + x-cursor.xcenter) * TRACKBALL_MULTIPLIER;
     cursor.y = (cursor.y + y-cursor.ycenter) * TRACKBALL_MULTIPLIER;
-    [cursor.x, cursor.y, xlim, ylim] = limit(cursor.x, cursor.y, cursor.xcenter, cursor.ycenter, rlim, xlim, ylim);
-
+    %[cursor.x, cursor.y, xlim, ylim] = limit(cursor.x, cursor.y, cursor.xcenter, cursor.ycenter, rlim, xlim, ylim);
+    xlim = cursor.xcenter;
+    ylim = cursor.ycenter;
     % check bounds
     if cursor.x > cursor.xmax
         cursor.x = cursor.xmax;
