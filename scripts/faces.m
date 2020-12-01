@@ -98,12 +98,13 @@ T                              = array2table(zeros(size(countBalMat,1),size(vnam
 T.Properties.VariableNames     = vnames;
 
 a                              = split(counterbalancefile,filesep);
-version_chunk                  = split(extractAfter(a(end),"ver-"),"_");
+% version_chunk                  = split(extractAfter(a(end),"ver-"),".");
+version_chunk = sscanf(char(a(end)) ,'task-faces_counterbalance_ver-%2d.csv');
 
 T.src_subject_id(:)            = sub;
 T.session_id(:)                = 2;
 T.param_run_num(:)              = run_num;
-T.param_counterbalance_ver(:)   = str2double(version_chunk{1});
+T.param_counterbalance_ver(:)   = version_chunk;
 T.param_video_filename          = countBalMat.image_filename;
 
 
@@ -249,8 +250,10 @@ psychtoolbox_repoFileName = fullfile(repo_save_dir, [bids_string,'_psychtoolbox_
 save(psychtoolbox_saveFileName, 'p');
 save(psychtoolbox_repoFileName, 'p');
 
-clear p; Screen('Close'); close all; sca; d.close()
-
+clear p; Screen('Close'); close all; sca; 
+if debug
+    d.close()
+end
 %% -----------------------------------------------------------------------------
 %                                   Function
 %-------------------------------------------------------------------------------
