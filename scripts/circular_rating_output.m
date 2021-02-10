@@ -1,4 +1,4 @@
-function [trajectory, RT, buttonPressOnset] = circular_rating_output(duration, p, image_scale, rating_type)
+function [trajectory, RT, buttonPressOnset] = circular_rating_output(duration, p, image_scale, rating_type, biopac, channel)
 % global screenNumber window windowRect xCenter yCenter screenXpixels screenYpixels
 % shows a circular rating scale and records mouse position
 %
