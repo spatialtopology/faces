@@ -8,10 +8,12 @@ function faces(sub,input_counterbalance_file, run_num, biopac)
 %% 0. Biopac parameters _________________________________________________
 script_dir = pwd;
 % biopac channel
-channel_trigger    = 0;
-channel_fixation   = 1;
-channel_faces      = 2;
-channel_rating     = 3;
+
+channel = struct;
+channel.trigger    = 0;
+channel.fixation   = 1;
+channel.faces      = 2;
+channel.rating     = 3;
 
 if biopac == 1
     script_dir = pwd;
@@ -24,11 +26,11 @@ if biopac == 1
     end
     % Check to see if u3 was imported correctly
     % py.help('u3')
-    d = py.u3.U3();
+    channel.d = py.u3.U3();
     % set every channel to 0
-    d.configIO(pyargs('FIOAnalog', int64(0), 'EIOAnalog', int64(0)));
+    channel.d.configIO(pyargs('FIOAnalog', int64(0), 'EIOAnalog', int64(0)));
     for FIONUM = 0:7
-        d.setFIOState(pyargs('fioNum', int64(FIONUM), 'state', int64(0)));
+        channel.d.setFIOState(pyargs('fioNum', int64(FIONUM), 'state', int64(0)));
     end
     cd(script_dir);
 end
@@ -178,15 +180,13 @@ DrawFormattedText(p.ptb.window,'Waiting for trigger','center',p.ptb.screenYpixel
 Screen('Flip',p.ptb.window);
 WaitKeyPress(p.keys.trigger);
 T.param_trigger_onset(:) = GetSecs;
-T.param_start_biopac(:)                   = biopac_linux_matlab(biopac, channel_trigger, 1);
+T.param_start_biopac(:)                   = biopac_linux_matlab(biopac, channel, channel.trigger, 1);
 
 
 WaitSecs(TR*6);
 
 %% 0. Experimental loop _________________________________________________________
 for trl = 1:size(countBalMat,1)
-
-    
 
     %% 1. Fixtion Jitter  ____________________________________________________
     jitter1 = countBalMat.ISI(trl)-1;
@@ -195,30 +195,28 @@ for trl = 1:size(countBalMat,1)
 
 
     T.event01_fixation_onset(trl) = Screen('Flip', p.ptb.window);
-    T.event01_fixation_biopac(trl)        = biopac_linux_matlab(biopac, channel_fixation, 1);
+    T.event01_fixation_biopac(trl)        = biopac_linux_matlab(biopac, channel, channel.fixation, 1);
     WaitSecs(jitter1);
-    jitter1_end                           = biopac_linux_matlab(biopac, channel_fixation, 0);
+    jitter1_end                           = biopac_linux_matlab(biopac, channel, channel.fixation, 0);
     T.event01_fixation_duration(trl) = jitter1_end - T.event01_fixation_onset(trl) ;
 
     %% 2. face ________________________________________________________________
     %video_filename = [countBalMat.image_filename{trl}];
     %video_file = fullfile(dir_video, video_filename);
-    T.event02_face_biopac(trl)      = biopac_linux_matlab(biopac, channel_faces, 1);
+    T.event02_face_biopac(trl)      = biopac_linux_matlab(biopac, channel, channel.faces, 1);
     movie_time = video_play(video_file , p ,movie{trl}, imgw{trl}, imgh{trl});
     T.event02_face_onset(trl) = movie_time;
-    biopac_linux_matlab(biopac, channel_faces, 0);
+    biopac_linux_matlab(biopac, channel, channel.faces, 0);
 
 
     %% 3. post evaluation rating ___________________________________________________
-    T.event03_rating_biopac(trl)          = biopac_linux_matlab(biopac, channel_rating, 1);
-    T.event03_rating_displayonset(trl) = GetSecs;
-    [trajectory, RT, buttonPressOnset] = linear_rating(1.875,p, rating_tex, judgements{run_num});
+    T.event03_rating_biopac(trl)          = biopac_linux_matlab(biopac, channel, channel.rating, 1);
+    [onsettime, trajectory, RT, buttonPressOnset] = linear_rating(1.875,p, rating_tex, judgements{run_num}, biopac, channel);
     rating_Trajectory{trl,2}            = trajectory;
+    T.event03_rating_displayonset(trl) = onsettime;
     T.event03_rating_responseonset(trl) = buttonPressOnset;
     T.event03_rating_RT(trl) = RT;
-    biopac_linux_matlab(biopac, channel_rating, 0);
-
-
+    biopac_linux_matlab(biopac, channel, channel.rating, 0);
 end
 
 %% ______________________________ Instructions _________________________________
@@ -226,7 +224,7 @@ Screen('TextSize',p.ptb.window,36);
 DrawFormattedText(p.ptb.window,instruct_end,'center',p.ptb.screenYpixels/2+150,255);
 
 T.param_end_instruct_onset(:) = Screen('Flip',p.ptb.window);
-T.param_end_biopac(:)                     = biopac_linux_matlab(biopac, channel_trigger, 0);
+T.param_end_biopac(:)                     = biopac_linux_matlab(biopac, channel, channel.trigger, 0);
 WaitKeyPress(p.keys.end);
 T.param_experiment_duration(:) = T.param_end_instruct_onset(1) - T.param_trigger_onset(1);
 
@@ -250,9 +248,9 @@ psychtoolbox_repoFileName = fullfile(repo_save_dir, [bids_string,'_psychtoolbox_
 save(psychtoolbox_saveFileName, 'p');
 save(psychtoolbox_repoFileName, 'p');
 
-clear p; Screen('Close'); close all; sca; 
-if debug
-    d.close()
+clear p; Screen('Close'); close all; sca;
+if biopac
+    channel.d.close()
 end
 %% -----------------------------------------------------------------------------
 %                                   Function
@@ -293,9 +291,9 @@ end
     end
 
 
-    function [time] = biopac_linux_matlab(biopac, channel_num, state_num)
+    function [time] = biopac_linux_matlab(biopac, channel, channel_num, state_num)
         if biopac
-            d.setFIOState(pyargs('fioNum', int64(channel_num), 'state', int64(state_num)))
+            channel.d.setFIOState(pyargs('fioNum', int64(channel_num), 'state', int64(state_num)))
             time = GetSecs;
         else
             time = GetSecs;
