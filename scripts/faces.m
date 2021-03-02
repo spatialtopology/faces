@@ -71,10 +71,19 @@ main_dir                       = fileparts(task_dir); %'/home/spacetop/repos/fac
 repo_dir                       = fileparts(fileparts(task_dir)); % '/home/spacetop/repos'
 taskname                       = 'faces';
 session = 2;
-bids_string                    = [strcat('spacetop_task-', taskname),...
-    strcat('_ses-',sprintf('%02d', session)),...
-    strcat('_sub-', sprintf('%04d', sub)), ...
-    strcat('_run-',sprintf('%02d',run_num))];
+order=rem(sub,2)+1;
+if order==1
+
+    judgements = {'AGE' 'SEX' 'INTENSITY'};
+else
+
+    judgements = {'INTENSITY'  'SEX'  'AGE'};
+end
+taskname = judgements{run_num};
+bids_string                    = [     strcat('sub-', sprintf('%04d', sub)), ...
+    strcat('_ses-',sprintf('%02d', session)),...    
+    'task-faces',...
+    strcat('_run-',sprintf('%02d',run_num), '-', lower(taskname))];
 sub_save_dir = fullfile(main_dir, 'data', strcat('sub-', sprintf('%04d', sub)),...
     'beh' , strcat('ses-',sprintf('%02d', session)));
 repo_save_dir = fullfile(repo_dir, 'data', strcat('sub-', sprintf('%04d', sub)),...
@@ -90,14 +99,21 @@ countBalMat                    = countBalMat(countBalMat.RunNumber==run_num,:);
 %% D. making output table ________________________________________________________
 
 vnames = {'src_subject_id','session_id', 'param_run_num','param_counterbalance_ver',...
-    'param_video_filename','param_trigger_onset','param_start_biopac'...
+    'param_video_filename','param_trigger_onset','param_start_biopac', 'param_taskname',...
     'event01_fixation_onset','event01_fixation_biopac','event01_fixation_duration',...
     'event02_face_onset','event02_face_biopac',...
     'event03_rating_biopac','event03_rating_displayonset','event03_rating_responseonset','event03_rating_RT',...
     'param_end_instruct_onset','param_end_biopac','param_experiment_duration'};
+vtypes = { 'double','double','double','double','string','double','double','string',...
+'double','double','double',... % event01
+  'double','double',...
+  'double', 'double', 'double', 'double',...
+  'double', 'double', 'double'};
 
-T                              = array2table(zeros(size(countBalMat,1),size(vnames,2)));
-T.Properties.VariableNames     = vnames;
+T = table('Size', [size(countBalMat,1), size(vnames,2)], 'VariableNames', vnames, 'VariableTypes', vtypes);
+
+% T                              = array2table(zeros(size(countBalMat,1),size(vnames,2)));
+% T.Properties.VariableNames     = vnames;
 
 a                              = split(counterbalancefile,filesep);
 % version_chunk                  = split(extractAfter(a(end),"ver-"),".");
@@ -125,18 +141,14 @@ p.keys.end                     = KbName('e');
 TR                             = 0.46;
 
 %% G. Instructions _____________________________________________________________
-order=rem(sub,2)+1;
-if order==1
 
-    judgements = {'AGE' 'SEX' 'INTENSITY'};
-else
-    judgements = {'INTENSITY'  'SEX'  'AGE'};
-end
-instruct_start                 = ['We will now start the experiment.\nPlease indicate the ' judgements{run_num} ' of the face.'];
+instruct_start                 = ['We will now start the experiment.\nPlease indicate the ' judgements{run_num} ' of the face.\n\n\n\nexperimenters, press "s" to start'];
+instruct_trigger              = ['Judgment: ' judgements{run_num} ' of the face'];
 
-instruct_end                   = 'This is the end of the experiment. Please wait for the experimenter';
+instruct_end                   = 'This is the end of the experiment. Please wait for the experimenter\n\n\n\nexperimenters, press "e" to end';
 
-taskname = judgements{run_num};
+
+T.param_taskname(:) = lower(taskname);
 %% C. Circular rating scale _____________________________________________________
 image_filepath                 = fullfile(main_dir,'stimuli','ratingscale');
 image_scale_filename           = lower(['task-',taskname,'_scale.jpg']);
@@ -167,24 +179,28 @@ end
 % ------------------------------------------------------------------------------
 
 %% ______________________________ Instructions _________________________________
-Screen('TextSize',p.ptb.window,36);
-DrawFormattedText(p.ptb.window,instruct_start,'center',p.ptb.screenYpixels/2+150,255);
+Screen('TextSize',p.ptb.window,40);
+DrawFormattedText(p.ptb.window,instruct_start,'center',p.ptb.screenYpixels/2,255);
 Screen('Flip',p.ptb.window);
 
 %% _______________________ Wait for Trigger to Begin ___________________________
 DisableKeysForKbCheck([]);
 
-WaitKeyPress(p.keys.start);
-Screen('TextSize',p.ptb.window,28);
-DrawFormattedText(p.ptb.window,'Waiting for trigger','center',p.ptb.screenYpixels/2,255);
+WaitKeyPress(KbName('s'));
+
+Screen('DrawLines', p.ptb.window, p.fix.allCoords,...
+    p.fix.lineWidthPix, p.ptb.white, [p.ptb.xCenter p.ptb.yCenter], 2);
 Screen('Flip',p.ptb.window);
 WaitKeyPress(p.keys.trigger);
 T.param_trigger_onset(:) = GetSecs;
 T.param_start_biopac(:)                   = biopac_linux_matlab(biopac, channel, channel.trigger, 1);
-
+Screen('TextSize',p.ptb.window,72);
+DrawFormattedText(p.ptb.window,instruct_trigger,'center',p.ptb.screenYpixels/2,255);
+Screen('Flip',p.ptb.window);
 
 WaitSecs(TR*6);
 
+Screen('TextSize',p.ptb.window,36);
 %% 0. Experimental loop _________________________________________________________
 for trl = 1:size(countBalMat,1)
 
@@ -217,15 +233,19 @@ for trl = 1:size(countBalMat,1)
     T.event03_rating_responseonset(trl) = buttonPressOnset;
     T.event03_rating_RT(trl) = RT;
     biopac_linux_matlab(biopac, channel, channel.rating, 0);
+    
+        %% ________________________ 7. temporarily save file _______________________
+    tmp_file_name = fullfile(sub_save_dir,strcat(bids_string,'_TEMPbeh.csv' ));
+    writetable(T,tmp_file_name);
 end
 
 %% ______________________________ Instructions _________________________________
-Screen('TextSize',p.ptb.window,36);
-DrawFormattedText(p.ptb.window,instruct_end,'center',p.ptb.screenYpixels/2+150,255);
+Screen('TextSize',p.ptb.window,40);
+DrawFormattedText(p.ptb.window,instruct_end,'center',p.ptb.screenYpixels/2,255);
 
 T.param_end_instruct_onset(:) = Screen('Flip',p.ptb.window);
 T.param_end_biopac(:)                     = biopac_linux_matlab(biopac, channel, channel.trigger, 0);
-WaitKeyPress(p.keys.end);
+WaitKeyPress(KbName('e'));
 T.param_experiment_duration(:) = T.param_end_instruct_onset(1) - T.param_trigger_onset(1);
 
 %% save parameter ______________________________________________________________
