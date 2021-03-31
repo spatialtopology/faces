@@ -1,4 +1,4 @@
-function [trajectory, RT, buttonPressOnset] = circular_rating_output(duration, p, image_tex, rating_type)
+function [timing_initialized, trajectory, RT, buttonPressOnset] = linear_rating(duration, p, image_tex, rating_type, biopac, channel)
 % global screenNumber window windowRect xCenter yCenter screenXpixels screenYpixels
 % shows a circular rating scale and records mouse position
 %
@@ -42,7 +42,7 @@ RT = NaN;
 buttonPressOnset = NaN;
 
 HideCursor;
-
+biopac_linux_matlab(biopac,channel, channel.rating, 0)
 %%% configure screen
 dspl.screenWidth = p.ptb.rect(3);
 dspl.screenHeight = p.ptb.rect(4);
@@ -87,8 +87,8 @@ RATINGTITLES = {'INTENSITY'};
 % initialize
 Screen('TextSize',p.ptb.window,72);
 DrawFormattedText(p.ptb.window,rating_type,'center',dspl.screenHeight/2+150,255);
-timing.initialized = Screen('Flip',p.ptb.window);
-
+timing_initialized = Screen('Flip',p.ptb.window);
+biopac_linux_matlab(biopac,channel, channel.rating, 1)
 cursor.x = cursor.xcenter;
 cursor.y = cursor.ycenter;
 sample = 1;
@@ -99,7 +99,7 @@ buttonpressed  = false;
 rlim = 500;
 xlim = cursor.xcenter;
 ylim = cursor.ycenter;
-while GetSecs < timing.initialized + duration
+while GetSecs < timing_initialized + duration
 
     loopstart = GetSecs;
 
@@ -144,7 +144,8 @@ while GetSecs < timing.initialized + duration
     Screen('Flip',p.ptb.window);
 
     elseif any(buttonpressed)
-       RT = GetSecs - timing.initialized;
+    biopac_linux_matlab(biopac,channel, channel.rating, 0)
+       RT = GetSecs - timing_initialized;
        buttonPressOnset = GetSecs;
        buttonpressed = [0 0 0];
        Screen('CopyWindow',dspl.cscale.w,p.ptb.window);
