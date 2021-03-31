@@ -79,11 +79,11 @@ else
 
     judgements = {'INTENSITY'  'SEX'  'AGE'};
 end
-taskname = judgements{run_num};
+judgment = judgements{run_num};
 bids_string                    = [     strcat('sub-', sprintf('%04d', sub)), ...
-    strcat('_ses-',sprintf('%02d', session)),...    
-    'task-faces',...
-    strcat('_run-',sprintf('%02d',run_num), '-', lower(taskname))];
+    strcat('_ses-',sprintf('%02d', session)),...
+    '_task-faces',...
+    strcat('_run-',sprintf('%02d',run_num), '-', lower(judgment))];
 sub_save_dir = fullfile(main_dir, 'data', strcat('sub-', sprintf('%04d', sub)),...
     'beh' , strcat('ses-',sprintf('%02d', session)));
 repo_save_dir = fullfile(repo_dir, 'data', strcat('sub-', sprintf('%04d', sub)),...
@@ -148,10 +148,10 @@ instruct_trigger              = ['Judgment: ' judgements{run_num} ' of the face'
 instruct_end                   = 'This is the end of the experiment. Please wait for the experimenter\n\n\n\nexperimenters, press "e" to end';
 
 
-T.param_taskname(:) = lower(taskname);
+T.param_taskname(:) = lower(judgment);
 %% C. Circular rating scale _____________________________________________________
 image_filepath                 = fullfile(main_dir,'stimuli','ratingscale');
-image_scale_filename           = lower(['task-',taskname,'_scale.jpg']);
+image_scale_filename           = lower(['task-',judgment,'_scale.jpg']);
 image_scale                    = fullfile(image_filepath,image_scale_filename);
 
 
@@ -233,7 +233,7 @@ for trl = 1:size(countBalMat,1)
     T.event03_rating_responseonset(trl) = buttonPressOnset;
     T.event03_rating_RT(trl) = RT;
     biopac_linux_matlab(biopac, channel, channel.rating, 0);
-    
+
         %% ________________________ 7. temporarily save file _______________________
     tmp_file_name = fullfile(sub_save_dir,strcat(bids_string,'_TEMPbeh.csv' ));
     writetable(T,tmp_file_name);
@@ -268,7 +268,7 @@ psychtoolbox_repoFileName = fullfile(repo_save_dir, [bids_string,'_psychtoolbox_
 save(psychtoolbox_saveFileName, 'p');
 save(psychtoolbox_repoFileName, 'p');
 
-clear p; Screen('Close'); close all; sca;
+clear p; Screen('Close'); close all; sca; clearvars;
 if biopac
     channel.d.close()
 end
